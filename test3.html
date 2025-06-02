@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>コード進行ジェネレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 20px 15px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .key-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .select-group label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        select {
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-align: center;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+        }
+
+        .content {
+            padding: 15px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            border-radius: 12px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #2196F3;
+            display: block;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 0 5px;
+        }
+
+        .filter-tab {
+            flex: 1;
+            padding: 12px 8px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .filter-tab.active {
+            background: #2196F3;
+            color: white;
+        }
+
+        .progressions-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .progression-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .progression-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .progression-card.expanded {
+            background: #f8f9fa;
+            border-color: #2196F3;
+        }
+
+        .progression-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .progression-type {
+            background: #2196F3;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .chords-container {
+            margin-bottom: 12px;
+        }
+
+        .chords {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .chord {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 8px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: center;
+            touch-action: manipulation;
+        }
+
+        .roman-numerals {
+            color: #888;
+            font-size: 0.75rem;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .description {
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .progression-card.expanded .description {
+            display: block;
+        }
+
+        .expand-indicator {
+            font-size: 0.8rem;
+            color: #888;
+            transition: transform 0.3s ease;
+        }
+
+        .progression-card.expanded .expand-indicator {
+            transform: rotate(180deg);
+        }
+
+        .floating-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .floating-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .floating-btn:active {
+            transform: scale(0.9);
+        }
+
+        .back-to-top {
+            background: #666;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+
+            .header {
+                padding: 15px 10px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .controls {
+                padding: 15px 10px;
+            }
+
+            .content {
+                padding: 10px;
+            }
+
+            .stats {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .stat-number {
+                font-size: 1.5rem;
+            }
+
+            .chord {
+                padding: 10px 6px;
+                font-size: 0.8rem;
+            }
+
+            .floating-controls {
+                bottom: 15px;
+                right: 15px;
+            }
+
+            .floating-btn {
+                width: 48px;
+                height: 48px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 800px;
+            }
+
+            .progressions-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .chords {
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            }
+        }
+
+        @media (min-width: 1024px) {
+            body {
+                padding: 20px;
+            }
+
+            .container {
+                max-width: 1200px;
+            }
+
+            .controls {
+                padding: 30px;
+            }
+
+            .content {
+                padding: 30px;
+            }
+        }
+
+        /* タッチデバイス用の調整 */
+        @media (hover: none) and (pointer: coarse) {
+            .progression-card:hover {
+                transform: none;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 コード進行ジェネレーター</h1>
+            <p>タップしてキーを選択、進行を探索しよう</p>
+        </div>
+
+        <div class="controls">
+            <div class="key-selector">
+                <div class="select-group">
+                    <label for="key">キー</label>
+                    <select id="key">
+                        <option value="C">C</option>
+                        <option value="C#">C#</option>
+                        <option value="D">D</option>
+                        <option value="D#">D#</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F#</option>
+                        <option value="G">G</option>
+                        <option value="G#">G#</option>
+                        <option value="A">A</option>
+                        <option value="A#">A#</option>
+                        <option value="B">B</option>
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label for="mode">スケール</label>
+                    <select id="mode">
+                        <option value="major">メジャー</option>
+                        <option value="minor">マイナー</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number" id="totalProgressions">0</div>
+                    <div class="stat-label">コード進行</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="basicCount">0</div>
+                    <div class="stat-label">基本進行</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="advancedCount">0</div>
+                    <div class="stat-label">応用進行</div>
+                </div>
+            </div>
+
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">すべて</button>
+                <button class="filter-tab" data-filter="basic">基本</button>
+                <button class="filter-tab" data-filter="advanced">応用</button>
+            </div>
+
+            <div class="progressions-grid" id="progressionsGrid">
+                <!-- コード進行がここに表示される -->
+            </div>
+        </div>
+    </div>
+
+    <div class="floating-controls">
+        <button class="floating-btn back-to-top" id="backToTop" title="トップに戻る">↑</button>
+        <button class="floating-btn" id="randomProgression" title="ランダム選択">🎲</button>
+    </div>
+
+    <script>
+        class ChordProgressionGenerator {
+            constructor() {
+                this.keyElement = document.getElementById('key');
+                this.modeElement = document.getElementById('mode');
+                this.gridElement = document.getElementById('progressionsGrid');
+                this.currentFilter = 'all';
+
+                this.progressions = {
+                    basic: [
+                        { name: 'カノン進行', chords: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V'], description: '最も有名で美しいコード進行。パッヘルベルのカノンで知られ、多くのヒット曲で使用される。感動的で普遍的な響きを持つ。' },
+                        { name: '丸サ進行', chords: ['IM7', 'vi7', 'ii7', 'V7'], description: 'ジャズスタンダードの基本。循環コードとしても知られ、無限にループできる美しい進行。' },
+                        { name: '4536進行', chords: ['IV', 'V', 'iii', 'vi'], description: 'J-POPで非常に多用される黄金パターン。明るく親しみやすい響きが特徴。' },
+                        { name: '6451進行', chords: ['vi', 'IV', 'V', 'I'], description: 'ポップスの定番。感情的で切ない響きが特徴。バラードでよく使用される。' },
+                        { name: '1564進行', chords: ['I', 'V', 'vi', 'IV'], description: 'Let It Beで有名。温かみのある親しみやすい進行。' },
+                        { name: '王道進行', chords: ['VIM7', 'V7', 'IM7'], description: 'ドミナントモーションの基本形。強い解決感を持つクラシカルな進行。' },
+                        { name: 'ツーファイブワン', chords: ['ii7', 'V7', 'IM7'], description: 'ジャズの基礎。強い解決感を持ち、あらゆるジャンルで使用される。' },
+                        { name: '下降進行', chords: ['I', 'VII', 'VI', 'V'], description: 'ベースラインが半音下降する力強い進行。ロックでよく使用される。' }
+                    ],
+                    advanced: [
+                        { name: 'カノン進行変化形A', chords: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'ii', 'V'], description: 'カノン進行の後半を変化させた応用形。より解決感のある終わり方。' },
+                        { name: 'カノン進行変化形B', chords: ['I', 'V', 'vi', 'IV', 'I', 'V', 'IV', 'V'], description: '3小節目を変更した現代的なアレンジ。ポップス向け。' },
+                        { name: '拡張4536進行', chords: ['IV', 'V', 'iii', 'vi', 'ii', 'V', 'I'], description: '4536進行に解決部分を追加。より完結感のある形。' },
+                        { name: 'クリシェ進行', chords: ['I', 'I/VII', 'I/VI', 'I/V'], description: 'ベース音が半音ずつ下降する技法。映画音楽でよく使用される。' },
+                        { name: 'モーダル進行', chords: ['i', 'bVII', 'IV', 'i'], description: 'ナチュラルマイナーの特徴的な進行。エキゾチックな響き。' },
+                        { name: 'サブドミナント連鎖', chords: ['I', 'IV', 'bVII', 'IV'], description: 'サブドミナントを中心とした浮遊感のある進行。アンビエント系で人気。' },
+                        { name: 'ジャズターナラウンド', chords: ['IM7', 'vi7', 'ii7', 'V7', 'IM7'], description: '丸サ進行に解決を追加したジャズの常套句。セッションでよく使用。' },
+                        { name: 'ブルース進行（簡易）', chords: ['I7', 'IV7', 'I7', 'V7'], description: '12小節ブルースの簡略版。基本的なブルースの響きを学べる。' },
+                        { name: '裏コード進行', chords: ['IM7', 'bII7', 'IM7'], description: 'V7の代理として♭II7を使用。ジャズの高度なテクニック。' },
+                        { name: 'ネオソウル進行', chords: ['iiø7', 'V7alt', 'i7'], description: '現代R&Bで人気の洗練された響き。複雑だが美しいハーモニー。' },
+                        { name: 'モード変化進行', chords: ['I', 'i', 'IV', 'iv'], description: 'メジャーとマイナーを行き来する印象的な進行。感情の起伏を表現。' },
+                        { name: 'セカンダリードミナント', chords: ['I', 'V/vi', 'vi', 'V'], description: 'viに向かうセカンダリードミナントを使用。ハーモニーに色彩感を追加。' }
+                    ]
+                };
+
+                this.scales = {
+                    major: [0, 2, 4, 5, 7, 9, 11],
+                    minor: [0, 2, 3, 5, 7, 8, 10]
+                };
+
+                this.chordQualities = {
+                    major: ['M', 'm', 'm', 'M', 'M', 'm', 'dim'],
+                    minor: ['m', 'dim', 'M', 'm', 'm', 'M', 'M']
+                };
+
+                this.noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+                this.init();
+            }
+
+            init() {
+                this.keyElement.addEventListener('change', () => this.generateProgressions());
+                this.modeElement.addEventListener('change', () => this.generateProgressions());
+
+                // フィルタータブ
+                document.querySelectorAll('.filter-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentFilter = e.target.dataset.filter;
+                        this.filterProgressions();
+                    });
+                });
+
+                // フローティングボタン
+                document.getElementById('backToTop').addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+
+                document.getElementById('randomProgression').addEventListener('click', () => {
+                    this.highlightRandomProgression();
+                });
+
+                this.generateProgressions();
+            }
+
+            parseChordSymbol(symbol, key, mode) {
+                let degree, quality = '';
+
+                if (symbol.includes('bVII')) {
+                    degree = 7;
+                    symbol = symbol.replace('bVII', '');
+                    if (mode === 'major') degree = 7;
+                } else if (symbol.includes('bVI')) {
+                    degree = 6;
+                    symbol = symbol.replace('bVI', '');
+                } else if (symbol.includes('bII')) {
+                    degree = 2;
+                    symbol = symbol.replace('bII', '');
+                } else if (symbol.includes('V/vi')) {
+                    return this.noteNames[(this.noteNames.indexOf(key) + 9) % 12] + '7';
+                } else {
+                    const romanMatch = symbol.match(/(VII|VI|V|IV|III|II|I|vii|vi|v|iv|iii|ii|i)/);
+                    if (romanMatch) {
+                        const roman = romanMatch[1];
+                        const romanToNum = {
+                            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7,
+                            'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7
+                        };
+                        degree = romanToNum[roman];
+                        symbol = symbol.replace(roman, '');
+                    }
+                }
+
+                quality = symbol;
+                return { degree, quality };
+            }
+
+            convertToActualChord(romanChord, key, mode) {
+                const keyIndex = this.noteNames.indexOf(key);
+                const scale = this.scales[mode];
+                const qualities = this.chordQualities[mode];
+
+                if (romanChord.includes('V/vi')) {
+                    return this.noteNames[(keyIndex + 9) % 12] + '7';
+                }
+
+                const parsed = this.parseChordSymbol(romanChord, key, mode);
+                let { degree, quality } = parsed;
+
+                if (!degree) return romanChord;
+
+                let noteIndex;
+                if (romanChord.includes('bVII')) {
+                    noteIndex = (keyIndex + 10) % 12;
+                } else if (romanChord.includes('bVI')) {
+                    noteIndex = (keyIndex + 8) % 12;
+                } else if (romanChord.includes('bII')) {
+                    noteIndex = (keyIndex + 1) % 12;
+                } else {
+                    noteIndex = (keyIndex + scale[degree - 1]) % 12;
+                }
+
+                const rootNote = this.noteNames[noteIndex];
+
+                if (quality === '') {
+                    quality = qualities[degree - 1] === 'M' ? '' : qualities[degree - 1];
+                }
+
+                return rootNote + quality;
+            }
+
+            generateProgressions() {
+                const key = this.keyElement.value;
+                const mode = this.modeElement.value;
+
+                this.gridElement.innerHTML = '';
+
+                let basicCount = 0;
+                let advancedCount = 0;
+
+                this.progressions.basic.forEach(progression => {
+                    const actualChords = progression.chords.map(chord =>
+                        this.convertToActualChord(chord, key, mode)
+                    );
+                    this.createProgressionCard(progression, actualChords, 'basic');
+                    basicCount++;
+                });
+
+                this.progressions.advanced.forEach(progression => {
+                    const actualChords = progression.chords.map(chord =>
+                        this.convertToActualChord(chord, key, mode)
+                    );
+                    this.createProgressionCard(progression, actualChords, 'advanced');
+                    advancedCount++;
+                });
+
+                document.getElementById('totalProgressions').textContent = basicCount + advancedCount;
+                document.getElementById('basicCount').textContent = basicCount;
+                document.getElementById('advancedCount').textContent = advancedCount;
+
+                this.filterProgressions();
+            }
+
+            createProgressionCard(progression, actualChords, type) {
+                const card = document.createElement('div');
+                card.className = 'progression-card';
+                card.dataset.type = type;
+
+                const typeLabel = type === 'basic' ? '基本' : '応用';
+                const typeColor = type === 'basic' ? '#4CAF50' : '#FF9800';
+
+                card.innerHTML = `
+                    <div class="progression-title">
+                        <span>${progression.name}</span>
+                        <div>
+                            <span class="progression-type" style="background: ${typeColor}">${typeLabel}</span>
+                            <span class="expand-indicator">▼</span>
+                        </div>
+                    </div>
+                    <div class="chords-container">
+                        <div class="chords">
+                            ${actualChords.map(chord => `<span class="chord">${chord}</span>`).join('')}
+                        </div>
+                        <div class="roman-numerals">
+                            ${progression.chords.join(' - ')}
+                        </div>
+                    </div>
+                    <div class="description">
+                        ${progression.description}
+                    </div>
+                `;
+
+                // タップで展開/折りたたみ
+                card.addEventListener('click', () => {
+                    card.classList.toggle('expanded');
+                });
+
+                this.gridElement.appendChild(card);
+            }
+
+            filterProgressions() {
+                const cards = document.querySelectorAll('.progression-card');
+                cards.forEach(card => {
+                    if (this.currentFilter === 'all' || card.dataset.type === this.currentFilter) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            highlightRandomProgression() {
+                const visibleCards = Array.from(document.querySelectorAll('.progression-card'))
+                    .filter(card => card.style.display !== 'none');
+
+                if (visibleCards.length > 0) {
+                    const randomCard = visibleCards[Math.floor(Math.random() * visibleCards.length)];
+
+                    // 前のハイライトを削除
+                    document.querySelectorAll('.progression-card').forEach(card => {
+                        card.style.border = '';
+                    });
+
+                    // ランダムカードをハイライト
+                    randomCard.style.border = '3px solid #FF6B6B';
+                    randomCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // 3秒後にハイライトを削除
+                    setTimeout(() => {
+                        randomCard.style.border = '';
+                    }, 3000);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChordProgressionGenerator();
+        });
+    </script>
+</body>
+
+</html>
